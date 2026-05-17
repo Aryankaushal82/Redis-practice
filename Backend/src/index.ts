@@ -1,5 +1,5 @@
 import express from 'express';
-import { connectRedis } from './config/redis';
+import redisClient, { connectRedis } from './config/redis';
 import cors from 'cors';
 import { envConfig } from './config';
 import v1Router from './routes/v1';
@@ -12,6 +12,10 @@ app.use(express.json());
 
 // routers
 app.use("/api/v1", v1Router);
+app.get("/health", async (req, res) => {
+  const pong = await redisClient.ping();
+  res.json({ status: "ok", redis: pong });
+});
 
 // redis server
 const startServer = async () => {
