@@ -74,6 +74,52 @@ app.get('/banner/exists',async(req,res)=>{
     }  
 })
 
+
+
+// otp
+
+const otpKey = (phone)=>{
+    return `otp:${phone}`
+}
+
+
+app.post('/otp',async(req,res)=>{
+    const {phone} = req.body
+    if (!phone){
+        return res.status(400).json({error:'Phone number is required'})
+    }
+    const otp = Math.floor(100000 + Math.random()*9000000).toString()
+    await redis.set(otpKey(phone),otp,'EX',300)
+    return res.json({success:true,message:`OTP sent to ${phone}`,otp})
+})
+
+app.post('/otp/verify',async(req,res)=>{
+    const {phone,otp} = req.body
+    if (!phone || !otp){
+        return res.status(400).json({error:'Phone number and OTP are required'})
+    }
+    const storedOtp = await redis.get(otpKey(phone))
+    if (!storedOtp){
+        return res.status(400).json({success:false,message:'OTP expired or not found'})
+    }
+    if (storedOtp === otp){
+        await redis.del(otpKey(phone))
+        return res.json({success:true,message:'OTP verified successfully'})
+    }
+    return res.status(400).json({success:false,message:'Invalid OTP'})
+})
+
+app.get('/otp/ttl/:phone',async(req,res)=>{
+    const {phone} = req.params
+    if (!phone){
+        return res.status(400).json({error:'Phone number is required'})
+    }
+    const ttl = await redis.ttl(otpKey(phone))
+    return res.json({success:true,ttl})
+})
+
+
+
 const PORT = process.env.PORT || 3002
 app.listen(PORT,()=>{
     console.log(`Server is running on port ${PORT}`)
